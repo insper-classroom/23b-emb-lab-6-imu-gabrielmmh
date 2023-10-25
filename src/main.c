@@ -52,7 +52,7 @@ enum orientacao
 };
 
 SemaphoreHandle_t xSemaphoreLed;
-QueueHandle_t xQueueOrientacao;
+QueueHandle_t xQueueOrientation;
 
 /************************/
 /* RTOS Hooks                                                           */
@@ -166,47 +166,9 @@ int8_t mcu6050_i2c_bus_read(uint8_t dev_addr, uint8_t reg_addr, uint8_t *reg_dat
 /* Tasks                                                                */
 /************************/
 
-static void task_orientacao(void *pvParameters)
-{
-  enum orientacao ori;
-  for (;;)
-  {
-    if (xQueueReceive(xQueueOrientacao, &ori, 1))
-    {
-      if (ori == ESQUERDA)
-      {
-        pio_clear(LED1_PIO, LED1_PIO_IDX_MASK);
-        pio_set(LED2_PIO, LED2_PIO_IDX_MASK);
-        pio_set(LED3_PIO, LED3_PIO_IDX_MASK);
-        vTaskDelay(10);
-      }
-      if (ori == DIREITA)
-      {
-        pio_clear(LED3_PIO, LED3_PIO_IDX_MASK);
-        pio_set(LED1_PIO, LED1_PIO_IDX_MASK);
-        pio_set(LED2_PIO, LED2_PIO_IDX_MASK);
-        vTaskDelay(10);
-      }
-      if (ori == FRENTE)
-      {
-        pio_clear(LED2_PIO, LED2_PIO_IDX_MASK);
-        pio_set(LED1_PIO, LED1_PIO_IDX_MASK);
-        pio_set(LED3_PIO, LED3_PIO_IDX_MASK);
-        vTaskDelay(10);
-      }
-    }
-    else
-    {
-      pio_set(LED1_PIO, LED1_PIO_IDX_MASK);
-      pio_set(LED2_PIO, LED2_PIO_IDX_MASK);
-      pio_set(LED3_PIO, LED3_PIO_IDX_MASK);
-    }
-  }
-}
 
 static void task_house_down(void *pvParameters)
 {
-  io_init();
   pio_set(LED_PIO, LED_PIO_IDX_MASK);
   for (;;)
   {
@@ -219,6 +181,44 @@ static void task_house_down(void *pvParameters)
         pio_set(LED_PIO, LED_PIO_IDX_MASK);
         vTaskDelay(50);
       }
+    }
+  }
+}
+
+static void task_orientacao(void *pvParameters)
+{
+  enum orientacao orientation;
+  for (;;)
+  {
+    if (xQueueReceive(xQueueOrientation, &orientation, 1))
+    {
+      if (orientation == ESQUERDA)
+      {
+        pio_clear(LED1_PIO, LED1_PIO_IDX_MASK);
+        pio_set(LED2_PIO, LED2_PIO_IDX_MASK);
+        pio_set(LED3_PIO, LED3_PIO_IDX_MASK);
+        vTaskDelay(10);
+      }
+      if (orientation == DIREITA)
+      {
+        pio_clear(LED3_PIO, LED3_PIO_IDX_MASK);
+        pio_set(LED1_PIO, LED1_PIO_IDX_MASK);
+        pio_set(LED2_PIO, LED2_PIO_IDX_MASK);
+        vTaskDelay(10);
+      }
+      if (orientation == FRENTE)
+      {
+        pio_clear(LED2_PIO, LED2_PIO_IDX_MASK);
+        pio_set(LED1_PIO, LED1_PIO_IDX_MASK);
+        pio_set(LED3_PIO, LED3_PIO_IDX_MASK);
+        vTaskDelay(10);
+      }
+    }
+    else
+    {
+      pio_set(LED1_PIO, LED1_PIO_IDX_MASK);
+      pio_set(LED2_PIO, LED2_PIO_IDX_MASK);
+      pio_set(LED3_PIO, LED3_PIO_IDX_MASK);
     }
   }
 }
@@ -301,48 +301,40 @@ static void task_imu(void *pvParameters)
     volatile uint8_t raw_gyr_xLow, raw_gyr_yLow, raw_gyr_zLow;
     float proc_gyr_x, proc_gyr_y, proc_gyr_z;
 
-    // Le valor do acc X High e Low
     mcu6050_i2c_bus_read(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_ACCEL_XOUT_H, &raw_acc_xHigh, 1);
     mcu6050_i2c_bus_read(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_ACCEL_XOUT_H, &raw_acc_xHigh, 1);
     mcu6050_i2c_bus_read(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_ACCEL_XOUT_L, &raw_acc_xLow, 1);
     mcu6050_i2c_bus_read(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_ACCEL_XOUT_L, &raw_acc_xLow, 1);
 
-    // Le valor do acc y High e  Low
     mcu6050_i2c_bus_read(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_ACCEL_YOUT_H, &raw_acc_yHigh, 1);
     mcu6050_i2c_bus_read(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_ACCEL_YOUT_H, &raw_acc_yHigh, 1);
-    mcu6050_i2c_bus_read(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_ACCEL_ZOUT_L, &raw_acc_yLow, 1);
-    mcu6050_i2c_bus_read(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_ACCEL_ZOUT_L, &raw_acc_yLow, 1);
+    mcu6050_i2c_bus_read(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_ACCEL_YOUT_L, &raw_acc_yLow, 1);
+    mcu6050_i2c_bus_read(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_ACCEL_YOUT_L, &raw_acc_yLow, 1);
 
-    // Le valor do acc z HIGH e Low
     mcu6050_i2c_bus_read(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_ACCEL_ZOUT_H, &raw_acc_zHigh, 1);
     mcu6050_i2c_bus_read(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_ACCEL_ZOUT_H, &raw_acc_zHigh, 1);
     mcu6050_i2c_bus_read(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_ACCEL_ZOUT_L, &raw_acc_zLow, 1);
     mcu6050_i2c_bus_read(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_ACCEL_ZOUT_L, &raw_acc_zLow, 1);
 
-    // Dados são do tipo complemento de dois
     raw_acc_x = (raw_acc_xHigh << 8) | (raw_acc_xLow << 0);
     raw_acc_y = (raw_acc_yHigh << 8) | (raw_acc_yLow << 0);
     raw_acc_z = (raw_acc_zHigh << 8) | (raw_acc_zLow << 0);
 
-    // Le valor do gyr X High e Low
     mcu6050_i2c_bus_read(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_GYRO_XOUT_H, &raw_gyr_xHigh, 1);
     mcu6050_i2c_bus_read(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_GYRO_XOUT_H, &raw_gyr_xHigh, 1);
     mcu6050_i2c_bus_read(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_GYRO_XOUT_L, &raw_gyr_xLow, 1);
     mcu6050_i2c_bus_read(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_GYRO_XOUT_L, &raw_gyr_xLow, 1);
 
-    // Le valor do gyr y High e  Low
     mcu6050_i2c_bus_read(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_GYRO_YOUT_H, &raw_gyr_yHigh, 1);
     mcu6050_i2c_bus_read(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_GYRO_YOUT_H, &raw_gyr_yHigh, 1);
-    mcu6050_i2c_bus_read(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_GYRO_ZOUT_L, &raw_gyr_yLow, 1);
-    mcu6050_i2c_bus_read(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_GYRO_ZOUT_L, &raw_gyr_yLow, 1);
+    mcu6050_i2c_bus_read(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_GYRO_YOUT_L, &raw_gyr_yLow, 1);
+    mcu6050_i2c_bus_read(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_GYRO_YOUT_L, &raw_gyr_yLow, 1);
 
-    // Le valor do gyr z HIGH e Low
     mcu6050_i2c_bus_read(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_GYRO_ZOUT_H, &raw_gyr_zHigh, 1);
     mcu6050_i2c_bus_read(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_GYRO_ZOUT_H, &raw_gyr_zHigh, 1);
     mcu6050_i2c_bus_read(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_GYRO_ZOUT_L, &raw_gyr_zLow, 1);
     mcu6050_i2c_bus_read(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_GYRO_ZOUT_L, &raw_gyr_zLow, 1);
 
-    // Dados são do tipo complemento de dois
     raw_gyr_x = (raw_gyr_xHigh << 8) | (raw_gyr_xLow << 0);
     raw_gyr_y = (raw_gyr_yHigh << 8) | (raw_gyr_yLow << 0);
     raw_gyr_z = (raw_gyr_zHigh << 8) | (raw_gyr_zLow << 0);
@@ -355,13 +347,6 @@ static void task_imu(void *pvParameters)
     proc_gyr_x = (float)raw_gyr_x / 131;
     proc_gyr_y = (float)raw_gyr_y / 131;
     proc_gyr_z = (float)raw_gyr_z / 131;
-
-    // 	  printf("acc_x: %f \n", proc_acc_x);
-    // 	  printf("acc_y: %f \n", proc_acc_y);
-    // 	  printf("acc_z: %f \n\n", proc_acc_z);
-    // 	  printf("gyr_x: %f \n", proc_gyr_x);
-    // 	  printf("gyr_y: %f \n", proc_gyr_y);
-    // 	  printf("gyr_z: %f \n\n", proc_gyr_z);
 
     if (sqrt(proc_acc_x * proc_acc_x + proc_acc_y * proc_acc_y + proc_acc_z * proc_acc_z) < 0.3)
     {
@@ -385,24 +370,24 @@ static void task_imu(void *pvParameters)
     // EM RELAÇÃO À POSIÇÃO DE INÍCIO DO SENSOR
 
     // em relação ao eixo z, rotacionando para a direita
-    if (euler.angle.yaw > 60)
+    if (euler.angle.yaw > 65)
     {
       ori = DIREITA;
-      xQueueSend(xQueueOrientacao, &ori, 0);
+      xQueueSend(xQueueOrientation, &ori, 0);
     }
 
     // em relação ao eixo z, rotacionando para a esquerda
-    if (euler.angle.yaw < -60)
+    if (euler.angle.yaw < -65)
     {
       ori = ESQUERDA;
-      xQueueSend(xQueueOrientacao, &ori, 0);
+      xQueueSend(xQueueOrientation, &ori, 0);
     }
 
     // em relação ao eixo z, direcionado para frente
-    if ((euler.angle.yaw < 60) && (euler.angle.yaw > -60))
+    if ((euler.angle.yaw < 65) && (euler.angle.yaw > -65))
     {
       ori = FRENTE;
-      xQueueSend(xQueueOrientacao, &ori, 0);
+      xQueueSend(xQueueOrientation, &ori, 0);
     }
 
     // uma amostra a cada 10ms
@@ -417,11 +402,9 @@ static void task_imu(void *pvParameters)
 int main(void)
 {
 
-  pio_set(LED1_PIO, LED1_PIO_IDX_MASK);
-  pio_set(LED2_PIO, LED2_PIO_IDX_MASK);
-  pio_set(LED3_PIO, LED3_PIO_IDX_MASK);
+  io_init();
 
-  xQueueOrientacao = xQueueCreate(32, sizeof(enum orientacao));
+  xQueueOrientation = xQueueCreate(32, sizeof(enum orientacao));
 
   /* Attempt to create a semaphore. */
   xSemaphoreLed = xSemaphoreCreateBinary();
@@ -433,11 +416,6 @@ int main(void)
 
   /* Initialize the console uart */
   configure_console();
-
-  /* Output demo information. */
-  printf("-- Freertos Example --\n\r");
-  printf("-- %s\n\r", BOARD_NAME);
-  printf("-- Compiled: %s %s --\n\r", _DATE, __TIME_);
 
   /* Create task of orientation */
   if (xTaskCreate(task_orientacao, "Orientacao", TASK_LED_STACK_SIZE, NULL,
